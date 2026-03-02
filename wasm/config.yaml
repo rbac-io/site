@@ -1,0 +1,21 @@
+variables:
+  - name: user
+    type:
+      type_name: map
+      params:
+        - type_name: string
+        - type_name: dyn
+  - name: items
+    type:
+      type_name: list
+      params:
+        - type_name: dyn
+extensions:
+  - name: bindings
+  - name: "encoders"
+  - name: "lists"
+  - name: "math"
+  - name: "sets"
+  - name: "strings"
+  - name: "regex"
+  - name: "two-var-comprehensions"
