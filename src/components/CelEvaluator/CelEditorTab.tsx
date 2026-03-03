@@ -114,6 +114,8 @@ export function CelEditorTab() {
     };
 
     const handleEvaluate = useCallback(() => {
+        if (isWasmLoading) return;
+
         let context = {};
         try {
             context = JSON.parse(contextStr);
@@ -127,7 +129,7 @@ export function CelEditorTab() {
 
         const evalResult = evaluateCELWithGo(expression, context);
         setResult(evalResult);
-    }, [expression, contextStr]);
+    }, [expression, contextStr, isWasmLoading]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -156,37 +158,12 @@ export function CelEditorTab() {
                             <p style={{ fontSize: "0.75rem", color: "var(--text-secondary, #94a3b8)" }}>Common Expression Language Evaluator</p>
                         </div>
                     </div>
-
-                    <div style={{ height: "1.5rem", width: "1px", background: "var(--border-color, #334155)", marginLeft: "0.5rem", marginRight: "0.5rem" }}></div>
-
-                    <select
-                        value={expression}
-                        onChange={(e) => setExpression(e.target.value)}
-                        style={{
-                            padding: "0.4rem 0.75rem",
-                            fontSize: "0.875rem",
-                            borderRadius: "6px",
-                            border: "1px solid var(--border-color, #334155)",
-                            background: "rgba(0,0,0,0.2)",
-                            color: "var(--text-primary, #f8fafc)",
-                            cursor: "pointer",
-                            outline: "none",
-                            fontFamily: "inherit"
-                        }}
-                    >
-                        <option disabled value="">Select an example...</option>
-                        {EXAMPLES.map((ex, idx) => (
-                            <option key={idx} value={ex.expression} style={{ background: "var(--bg-color, #0f172a)" }}>
-                                {ex.name}
-                            </option>
-                        ))}
-                    </select>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                     {isWasmLoading && (
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary, #94a3b8)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                            WASM Loading...
+                            <span className="loading-dots">WASM Loading</span>
                         </div>
                     )}
                     <button
@@ -214,10 +191,10 @@ export function CelEditorTab() {
                 </div>
             </header>
 
-            <div style={{ flex: 1, minHeight: 0 }}>
+            <div style={{ flex: 1, minHeight: 0, paddingLeft: isMobile ? "20px" : "0", paddingRight: isMobile ? "20px" : "0", overflowY: isMobile ? "auto" : "hidden" }}>
                 {isMobile ? (
-                    <PanelGroup orientation="vertical">
-                        <Panel defaultSize={25} minSize={20}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "2rem" }}>
+                        <div style={{ height: "350px", minHeight: "350px" }}>
                             <CELEditor
                                 value={expression}
                                 onChange={(v) => setExpression(v || "")}
@@ -225,25 +202,37 @@ export function CelEditorTab() {
                                 onConfigSaved={handleEvaluate}
                                 apiKey={geminiApiKey}
                             />
-                        </Panel>
-                        <ResizeHandle direction="vertical" />
-                        <Panel defaultSize={25} minSize={20}>
+                        </div>
+                        <div style={{ height: "250px", minHeight: "250px" }}>
                             <ContextEditor value={contextStr} onChange={(v) => setContextStr(v || "")} />
-                        </Panel>
-                        <ResizeHandle direction="vertical" />
-                        <Panel defaultSize={25} minSize={20}>
+                        </div>
+                        <div style={{ height: "200px", minHeight: "200px" }}>
                             <ResultSection result={result} />
-                        </Panel>
-                        <ResizeHandle direction="vertical" />
-                        <Panel defaultSize={25} minSize={20}>
-                            <div className="glass-panel" style={{ padding: "1.5rem", overflow: "auto", height: "100%" }}>
-                                <h3 style={{ fontSize: "0.875rem", color: "var(--text-secondary, #94a3b8)", marginBottom: "1rem" }}>Quick Tips</h3>
-                                <ul style={{ fontSize: "0.825rem", color: "var(--text-secondary, #94a3b8)", paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-                                    <li>CEL expressions are fast and safe.</li>
-                                    <li>Use <code className="code-font" style={{ color: "var(--accent-primary, #6366f1)" }}>.all()</code> or <code className="code-font" style={{ color: "var(--accent-primary, #6366f1)" }}>.exists()</code> for macros.</li>
-                                    <li>The strings extension is enabled by default.</li>
-                                    <li>Boolean results are common for policy checks.</li>
-                                </ul>
+                        </div>
+                        <div>
+                            <div className="glass-panel" style={{ padding: "1.5rem", overflow: "visible" }}>
+                                <h3 style={{ fontSize: "0.875rem", color: "var(--text-secondary, #94a3b8)", marginBottom: "1rem" }}>Examples</h3>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                                    {EXAMPLES.map((ex, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setExpression(ex.expression)}
+                                            style={{
+                                                textAlign: "left",
+                                                padding: "0.75rem",
+                                                background: expression === ex.expression ? "var(--bg-color, #0f172a)" : "rgba(255,255,255,0.05)",
+                                                border: "1px solid " + (expression === ex.expression ? "var(--accent-primary, #6366f1)" : "var(--border-color, #334155)"),
+                                                borderRadius: "6px",
+                                                color: expression === ex.expression ? "var(--text-primary, #f8fafc)" : "var(--text-secondary, #94a3b8)",
+                                                cursor: "pointer",
+                                                transition: "all 0.2s"
+                                            }}
+                                        >
+                                            <div style={{ fontSize: "0.825rem", fontWeight: "bold", marginBottom: "0.25rem" }}>{ex.name}</div>
+                                            <div style={{ fontSize: "0.75rem", fontFamily: "monospace", opacity: 0.8, wordBreak: "break-all" }}>{ex.expression}</div>
+                                        </button>
+                                    ))}
+                                </div>
 
                                 <h3 style={{ fontSize: "0.875rem", color: "var(--text-secondary, #94a3b8)", marginBottom: "1rem" }}>Resources</h3>
                                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.875rem" }}>
@@ -257,8 +246,8 @@ export function CelEditorTab() {
                                     </a>
                                 </div>
                             </div>
-                        </Panel>
-                    </PanelGroup>
+                        </div>
+                    </div>
                 ) : (
                     <PanelGroup orientation="horizontal">
                         <Panel defaultSize={60} minSize={30}>
@@ -287,13 +276,28 @@ export function CelEditorTab() {
                                 <ResizeHandle direction="vertical" />
                                 <Panel defaultSize={40} minSize={20}>
                                     <div className="glass-panel" style={{ padding: "1.5rem", overflow: "auto", height: "100%" }}>
-                                        <h3 style={{ fontSize: "0.875rem", color: "var(--text-secondary, #94a3b8)", marginBottom: "1rem" }}>Quick Tips</h3>
-                                        <ul style={{ fontSize: "0.825rem", color: "var(--text-secondary, #94a3b8)", paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-                                            <li>CEL expressions are fast and safe.</li>
-                                            <li>Use <code className="code-font" style={{ color: "var(--accent-primary, #6366f1)" }}>.all()</code> or <code className="code-font" style={{ color: "var(--accent-primary, #6366f1)" }}>.exists()</code> for macros.</li>
-                                            <li>The strings extension is enabled by default.</li>
-                                            <li>Boolean results are common for policy checks.</li>
-                                        </ul>
+                                        <h3 style={{ fontSize: "0.875rem", color: "var(--text-secondary, #94a3b8)", marginBottom: "1rem" }}>Examples</h3>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                                            {EXAMPLES.map((ex, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setExpression(ex.expression)}
+                                                    style={{
+                                                        textAlign: "left",
+                                                        padding: "0.75rem",
+                                                        background: expression === ex.expression ? "var(--bg-color, #0f172a)" : "rgba(255,255,255,0.05)",
+                                                        border: "1px solid " + (expression === ex.expression ? "var(--accent-primary, #6366f1)" : "var(--border-color, #334155)"),
+                                                        borderRadius: "6px",
+                                                        color: expression === ex.expression ? "var(--text-primary, #f8fafc)" : "var(--text-secondary, #94a3b8)",
+                                                        cursor: "pointer",
+                                                        transition: "all 0.2s"
+                                                    }}
+                                                >
+                                                    <div style={{ fontSize: "0.825rem", fontWeight: "bold", marginBottom: "0.25rem" }}>{ex.name}</div>
+                                                    <div style={{ fontSize: "0.75rem", fontFamily: "monospace", opacity: 0.8, wordBreak: "break-all" }}>{ex.expression}</div>
+                                                </button>
+                                            ))}
+                                        </div>
 
                                         <h3 style={{ fontSize: "0.875rem", color: "var(--text-secondary, #94a3b8)", marginBottom: "1rem" }}>Resources</h3>
                                         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.875rem" }}>

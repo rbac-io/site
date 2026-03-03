@@ -1,7 +1,7 @@
 import Editor from "@monaco-editor/react";
 import type { Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
-import { Sparkles, Code2, Settings2 } from "lucide-react";
+import { Sparkles, Code2, Pencil } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import type { EvaluationResult } from "../../lib/cel-eval";
 import { getCELPrompt } from "../../lib/cel-eval";
@@ -138,51 +138,8 @@ export const CELEditor = ({ value, onChange, result, onConfigSaved, apiKey }: CE
                         <Code2 size={16} />
                         CEL Expression
                     </div>
-                    <button
-                        className="action-button"
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.35rem",
-                            padding: "0.25rem 0.5rem",
-                            fontSize: "0.7rem",
-                            background: "rgba(168, 85, 247, 0.1)",
-                            color: "#c084fc",
-                            border: "1px solid rgba(168, 85, 247, 0.2)",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                            transition: "all 0.2s",
-                            marginLeft: "0.5rem"
-                        }}
-                        onClick={() => {
-                            setShowPromptDialog(true);
-                        }}
-                    >
-                        <Sparkles size={12} />
-                        Generate
-                    </button>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button
-                        onClick={() => setIsConfigOpen(!isConfigOpen)}
-                        className="action-button"
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.5rem",
-                            padding: "0.4rem 0.75rem",
-                            fontSize: "0.75rem",
-                            background: isConfigOpen ? "rgba(16, 185, 129, 0.1)" : "rgba(255, 255, 255, 0.05)",
-                            color: isConfigOpen ? "#34d399" : "var(--text-secondary)",
-                            border: "1px solid " + (isConfigOpen ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.1)"),
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            transition: "all 0.2s"
-                        }}
-                    >
-                        <Settings2 size={14} />
-                        {isConfigOpen ? "Hide Config" : "Edit Config"}
-                    </button>
                     <button
                         onClick={handleFormat}
                         className="action-button"
@@ -200,8 +157,51 @@ export const CELEditor = ({ value, onChange, result, onConfigSaved, apiKey }: CE
                             transition: "all 0.2s"
                         }}
                     >
-                        <Sparkles size={14} />
                         Format
+                    </button>
+                    <button
+                        className="action-button"
+                        title="Generate Expression"
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "28px",
+                            height: "28px",
+                            padding: 0,
+                            background: "rgba(168, 85, 247, 0.1)",
+                            color: "#c084fc",
+                            border: "1px solid rgba(168, 85, 247, 0.2)",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            transition: "all 0.2s"
+                        }}
+                        onClick={() => {
+                            setShowPromptDialog(true);
+                        }}
+                    >
+                        <Sparkles size={14} />
+                    </button>
+                    <button
+                        onClick={() => setIsConfigOpen(!isConfigOpen)}
+                        className="action-button"
+                        title={isConfigOpen ? "Hide Config" : "Edit Config"}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "28px",
+                            height: "28px",
+                            padding: 0,
+                            background: isConfigOpen ? "rgba(16, 185, 129, 0.1)" : "rgba(255, 255, 255, 0.05)",
+                            color: isConfigOpen ? "#34d399" : "var(--text-secondary)",
+                            border: "1px solid " + (isConfigOpen ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.1)"),
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            transition: "all 0.2s"
+                        }}
+                    >
+                        <Pencil size={14} />
                     </button>
                 </div>
             </div>
