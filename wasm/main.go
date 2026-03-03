@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"syscall/js"
 	"time"
 
@@ -70,8 +71,39 @@ func evaluateCELGo(this js.Value, args []js.Value) any {
 	}
 
 	start := time.Now()
-	ast, iss := celEnv.Compile(expression)
-	if iss.Err() != nil {
+
+	var ast *cel.Ast
+	var iss *cel.Issues
+
+	trimmed := strings.TrimSpace(expression)
+	isYaml := strings.HasPrefix(trimmed, "name:") || strings.HasPrefix(trimmed, "---") || strings.Contains(trimmed, "\nvariables:") || strings.Contains(trimmed, "\nrule:")
+
+	if isYaml {
+		parser, err := policy.NewParser(policy.SimpleVariables())
+		if err != nil {
+			return map[string]any{
+				"success":  false,
+				"error":    fmt.Sprintf("failed to create policy parser: %v", err),
+				"duration": float64(time.Since(start).Microseconds()) / 1000.0,
+			}
+		}
+
+		src := policy.StringSource(expression, "<input>")
+		p, parseIss := parser.Parse(src)
+		if parseIss != nil && parseIss.Err() != nil {
+			return map[string]any{
+				"success":  false,
+				"error":    parseIss.Err().Error(),
+				"duration": float64(time.Since(start).Microseconds()) / 1000.0,
+			}
+		}
+
+		ast, iss = policy.Compile(celEnv, p)
+	} else {
+		ast, iss = celEnv.Compile(expression)
+	}
+
+	if iss != nil && iss.Err() != nil {
 		return map[string]any{
 			"success":  false,
 			"error":    iss.Err().Error(),

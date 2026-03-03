@@ -12,10 +12,13 @@ variables:
         - type_name: dyn
 extensions:
   - name: bindings
+    version: "latest"
   - name: "encoders"
   - name: "lists"
+    version: "latest"
   - name: "math"
   - name: "sets"
   - name: "strings"
+    version: "latest"
   - name: "regex"
   - name: "two-var-comprehensions"
