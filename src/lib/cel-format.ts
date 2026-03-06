@@ -14,13 +14,14 @@
  */
 
 interface Token {
-    type: 'identifier' | 'operator' | 'unary_operator' | 'literal' | 'delimiter' | 'dot' | 'comment' | 'colon';
+    type: 'identifier' | 'operator' | 'unary_operator' | 'literal' | 'delimiter' | 'dot' | 'comment' | 'colon' | 'ternary_colon';
     value: string;
 }
 
 export function tokenize(input: string): Token[] {
     const tokens: Token[] = [];
     let i = 0;
+    let ternaryDepths = 0;
 
     while (i < input.length) {
         if (input.startsWith('//', i)) {
@@ -114,7 +115,12 @@ export function tokenize(input: string): Token[] {
         }
 
         if (char === ':') {
-            tokens.push({ type: 'colon', value: char });
+            if (ternaryDepths > 0) {
+                ternaryDepths--;
+                tokens.push({ type: 'ternary_colon', value: char });
+            } else {
+                tokens.push({ type: 'colon', value: char });
+            }
             i++;
             continue;
         }
@@ -127,6 +133,13 @@ export function tokenize(input: string): Token[] {
                 const prev = tokens.length > 0 ? tokens[tokens.length - 1] : null;
                 if (!prev || prev.type === 'operator' || prev.type === 'colon' || (prev.type === 'delimiter' && ![']', ')', '}'].includes(prev.value))) {
                     type = 'unary_operator';
+                }
+            } else if (char === '?') {
+                const prev = tokens.length > 0 ? tokens[tokens.length - 1] : null;
+                if (prev && (prev.type === 'delimiter' && ['{', ','].includes(prev.value))) {
+                    type = 'unary_operator';
+                } else {
+                    ternaryDepths++;
                 }
             }
             tokens.push({ type, value: char });
@@ -196,6 +209,7 @@ export function renderFlat(items: (Token | Node)[]): string {
         const t = item as Token;
         if (t.type === 'comment') return '\n' + t.value.trim() + '\n';
         if (t.type === 'colon') return ': ';
+        if (t.type === 'ternary_colon') return ' : ';
         if (t.type === 'operator') return ` ${t.value} `;
         if (t.type === 'unary_operator') return t.value;
         if (t.value === ',') {
@@ -214,14 +228,15 @@ function greedyRender(items: (Token | Node)[], depth: number, minPrio = 1, paren
     if (items.length === 0) return '';
     const indent = '  '.repeat(depth);
 
-    const renderFlatTokens = (itms: (Token | Node)[], pGroup = ''): string => {
+    const renderFlatTokens = (itms: (Token | Node)[]): string => {
         return itms.map(item => {
             if ('type' in item && item.type === 'group') {
-                return item.open + renderFlatTokens(item.tokens, item.open) + item.close;
+                return item.open + renderFlatTokens(item.tokens) + item.close;
             }
             const t = item as Token;
             if (t.type === 'comment') return '\n' + indent + t.value.trim() + '\n' + indent;
-            if (t.type === 'colon') return (pGroup === '{' || pGroup === '{?') ? ': ' : ' : ';
+            if (t.type === 'colon') return ': ';
+            if (t.type === 'ternary_colon') return ' : ';
             if (t.type === 'operator') return ` ${t.value} `;
             if (t.type === 'unary_operator') return t.value;
             if (t.value === ',') return ', ';
@@ -229,7 +244,7 @@ function greedyRender(items: (Token | Node)[], depth: number, minPrio = 1, paren
         }).join('').trim();
     };
 
-    let flat = renderFlatTokens(items, parentGroup);
+    let flat = renderFlatTokens(items);
 
     // Clean up contiguous comments
     flat = flat.replace(/\n\s*\n\s*\/\//g, '\n' + indent + '//');
@@ -247,15 +262,30 @@ function greedyRender(items: (Token | Node)[], depth: number, minPrio = 1, paren
             const it = items[i];
             if ('type' in it && it.type === 'group') {
                 const node = it as Node;
-                const inner = greedyRender(node.tokens, depth + 1, 1, node.open).trim();
-                result += node.open + (inner ? '\n' + '  '.repeat(depth + 1) + inner + '\n' + indent : '') + node.close;
+                if (node.open === '(') {
+                    let innerInline = greedyRender(node.tokens, depth + 2, 1, node.open).trim();
+                    const fakeResult = result + node.open + innerInline + node.close;
+                    const lines = fakeResult.split('\n');
+                    const maxLen = Math.max(...lines.map(l => l.length));
+                    if (maxLen <= 84) {
+                        result += node.open + innerInline + node.close;
+                    } else {
+                        const inner = greedyRender(node.tokens, depth + 2, 1, node.open).trim();
+                        result += node.open + (inner ? '\n' + '  '.repeat(depth + 2) + inner : '') + node.close;
+                    }
+                } else {
+                    const inner = greedyRender(node.tokens, depth + 1, 1, node.open).trim();
+                    result += node.open + (inner ? '\n' + '  '.repeat(depth + 1) + inner + '\n' + indent : '') + node.close;
+                }
             } else {
                 const t = it as Token;
                 if (t.type === 'comment') {
                     if (result && !result.endsWith('\n') && !result.endsWith(' ')) result += ' ';
                     result += t.value.trim() + '\n' + indent;
                 } else if (t.type === 'colon') {
-                    result += (parentGroup === '{' || parentGroup === '{?') ? ': ' : ' : ';
+                    result += ': ';
+                } else if (t.type === 'ternary_colon') {
+                    result += ' : ';
                 } else if (t.type === 'operator') {
                     result += ` ${t.value} `;
                 } else if (t.type === 'unary_operator') {
@@ -313,7 +343,8 @@ function greedyRender(items: (Token | Node)[], depth: number, minPrio = 1, paren
                 let currentLine = '';
                 for (let i = 0; i < parts.length; i++) {
                     const renderedPart = greedyRender(parts[i], depth, p + 1, parentGroup).trim();
-                    if (currentLine.length + renderedPart.length + indent.length + 1 > 80 && currentLine.length > 0) {
+                    const firstLineLen = renderedPart.split('\n')[0].length;
+                    if (currentLine.length + firstLineLen + indent.length + 1 > 80 && currentLine.length > 0) {
                         linesRes.push(currentLine.trim());
                         currentLine = renderedPart;
                     } else {
@@ -323,27 +354,16 @@ function greedyRender(items: (Token | Node)[], depth: number, minPrio = 1, paren
                 if (currentLine) {
                     linesRes.push(currentLine.trim());
                 }
-                return linesRes.map((line, i) => i === 0 ? line : indent + line).join('\n');
+                return linesRes.map((line, i) => i === 0 ? line : '  '.repeat(depth) + line).join('\n');
             }
 
             return parts.map((part, i) => {
-                const d = p === 1 || p === 2 || (p === 4 && i > 0) ? depth + 1 : depth;
+                const d = p === 1 || p === 2 || (p === 4 && i > 0) ? depth + 2 : depth;
                 let res = greedyRender(part, d, p + 1, parentGroup);
                 return i === 0 ? res : '\n' + '  '.repeat(d) + res.trimStart();
             }).join('');
         }
     }
-
-    const hasGroup = items.some(it => 'type' in it && it.type === 'group');
-    if (hasGroup) {
-        const fallbackRes = tryFallback();
-        const fallbackLines = fallbackRes.split('\n');
-        if (Math.max(...fallbackLines.map(l => l.length)) <= 80) {
-            return fallbackRes;
-        }
-    }
-
-
 
     return tryFallback();
 }

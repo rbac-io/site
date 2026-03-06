@@ -10,10 +10,8 @@ cel.bind(varName, {'key': 'value'}, varName.transformMapEntry(k, v, {k + '_prime
 
         const expected = `// Transform the map to contain an additional entry for each key and value,
 // called key-prime and value-prime.
-cel.bind(
-  varName, {'key': 'value'},
-  varName.transformMapEntry(k, v, {k + '_prime': v + '_prime'})
-)`;
+cel.bind(varName, {'key': 'value'},
+    varName.transformMapEntry(k, v, {k + '_prime': v + '_prime'}))`;
         expect(formatCEL(input)).toBe(expected);
     });
 
@@ -40,7 +38,7 @@ cel.bind(
 
     it('formats complex deep nesting', () => {
         const input = 'abcdefghij(b(c(d(e(f(g(h(i(j(k(l(m(n(o(p(q(r(s(t(u(v(w(x(y(z(1))))))))))))))))))))))))))';
-        expect(formatCEL(input)).toContain('abcdefghij(\n  b(c');
+        expect(formatCEL(input)).toContain('abcdefghij(\n    b(c');
     });
 
     it('handles numeric literals with decimals', () => {
@@ -54,10 +52,8 @@ cel.bind(
 
     it('wraps long lists of arguments', () => {
         const input = `my_function("arg1", "arg2", "arg3", "arg4", "arg5", "arg6", "arg7", "arg8", "arg9", "arg10")`;
-        const expected = `my_function(
-  "arg1", "arg2", "arg3", "arg4", "arg5", "arg6", "arg7", "arg8", "arg9",
-  "arg10"
-)`;
+        const expected = `my_function("arg1", "arg2", "arg3", "arg4", "arg5", "arg6", "arg7", "arg8", "arg9",
+    "arg10")`;
         expect(formatCEL(input)).toBe(expected);
     });
 
@@ -78,25 +74,25 @@ cel.bind(
     it('splits long lines on boolean operators', () => {
         const input = 'user.attributes.department == "engineering" && user.attributes.role == "senior_developer" || user.attributes.is_super_admin == true';
         const expected = `user.attributes.department == "engineering" &&
-  user.attributes.role == "senior_developer" ||
-  user.attributes.is_super_admin == true`;
+    user.attributes.role == "senior_developer" ||
+    user.attributes.is_super_admin == true`;
         expect(formatCEL(input)).toBe(expected);
     });
 
     it('splits long lines on comparison operators if no boolean operators exist', () => {
         const input = 'a_very_long_variable_name_one_hundred_characters == another_very_long_variable_name_one_hundred_characters';
         const expected = `a_very_long_variable_name_one_hundred_characters ==
-  another_very_long_variable_name_one_hundred_characters`;
+    another_very_long_variable_name_one_hundred_characters`;
         expect(formatCEL(input)).toBe(expected);
     });
 
     it('splits long chains of method calls on dots', () => {
         const input = 'items.filter(i, int(i) % 2 == 0).map(i, i * i).filter(i, i > 10).map(i, str(i)).join(",")';
         const expected = `items.filter(i, int(i) % 2 == 0)
-  .map(i, i * i)
-  .filter(i, i > 10)
-  .map(i, str(i))
-  .join(",")`;
+    .map(i, i * i)
+    .filter(i, i > 10)
+    .map(i, str(i))
+    .join(",")`;
         expect(formatCEL(input)).toBe(expected);
     });
 
@@ -122,7 +118,7 @@ cel.bind(
         expect(formatCEL('user.role == "admin" // Trailing \n// Double')).toBe('user.role == "admin"\n// Trailing Double');
     });
 
-    it('handles arrays and struct blocks properly', () => {
+    it('handles arrays blocks properly', () => {
         const input = `[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]`;
         const expected = `[
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
@@ -131,9 +127,26 @@ cel.bind(
         expect(formatCEL(input)).toBe(expected);
     });
 
+    it('handles struct blocks properly', () => {
+        const input = `Msg{field: value, ?opt_field: has(other.value) ? optional.of(other.value) : optional.none()}`;
+        const expected = `Msg{
+  field: value,
+  ?opt_field: has(other.value) ? optional.of(other.value) : optional.none()
+}`;
+        expect(formatCEL(input)).toBe(expected);
+    });
+
+    it('handles long argument lists properly', () => {
+        const input = `call(user.permissions, "read", "write").or((user.role == 'admin' || user.role == 'writer') && user.department == 'engineering')`;
+        const expected = `call(user.permissions, "read", "write").or(
+    (user.role == 'admin' || user.role == 'writer') &&
+        user.department == 'engineering')`;
+        expect(formatCEL(input)).toBe(expected);
+    });
+
     it('preserves single-char operators correctly', () => {
         expect(formatCEL('1 + 2 - 3 * 4 / 5 % 6')).toBe('1 + 2 - 3 * 4 / 5 % 6');
-        expect(formatCEL('!true && -5 < 0')).toBe('!true && -5 < 0');
+        expect(formatCEL('! true&& -5 < 0')).toBe('!true && -5 < 0');
     });
 });
 
